@@ -25,6 +25,9 @@ public class Map
     public Tile[] CoastTiles => tiles.Where(t => t.autoTileId >= 0 && t.autoTileId < (int)TileTypes.Grass).ToArray();
     public Tile[] LandTiles => tiles.Where(t => t.autoTileId == (int)TileTypes.Grass).ToArray();
 
+    public Tile startTile;
+    public Tile castleTile;
+
     public void Init(int rows, int cols)
     {
         this.rows = rows;
@@ -100,18 +103,25 @@ public class Map
         float townPercent,
         float monsterPercent)
     {
+        DecorateTiles(LandTiles, lakePercent, TileTypes.Empty);
+
         for (int i = 0; i < erodeIterations; i++)
         {
             DecorateTiles(CoastTiles, erodePercent, TileTypes.Empty);
-            DecorateTiles(LandTiles, lakePercent, TileTypes.Empty);
-            DecorateTiles(LandTiles, treePercent, TileTypes.Tree);
-            DecorateTiles(LandTiles, hillPercent, TileTypes.Hills);
-            DecorateTiles(LandTiles, mountainPercent, TileTypes.Mountains);
-            DecorateTiles(LandTiles, townPercent, TileTypes.Towns);
-            DecorateTiles(LandTiles, monsterPercent, TileTypes.Monster);
         }
 
-        DecorateTiles(LandTiles, 0.5f, TileTypes.Castle);
+        DecorateTiles(LandTiles, treePercent, TileTypes.Tree);
+        DecorateTiles(LandTiles, hillPercent, TileTypes.Hills);
+        DecorateTiles(LandTiles, mountainPercent, TileTypes.Mountains);
+        DecorateTiles(LandTiles, townPercent, TileTypes.Towns);
+        DecorateTiles(LandTiles, monsterPercent, TileTypes.Monster);
+
+        Tile[] towns = tiles.Where(x => x.autoTileId == (int)TileTypes.Towns).ToArray();
+        ShuffleTiles(towns);
+
+        startTile = towns[1];
+        castleTile = towns[0];
+        castleTile.autoTileId = (int)TileTypes.Castle;
 
         return true;
     }

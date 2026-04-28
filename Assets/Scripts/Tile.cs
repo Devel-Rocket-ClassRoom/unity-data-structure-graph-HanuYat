@@ -1,5 +1,6 @@
 public enum Sides
 {
+    None = -1,
     Bottom,
     Right,
     Left,
@@ -10,9 +11,12 @@ public class Tile
 {
     public int id;
     public int autoTileId;
+    public int fowTileId;
     public bool isVisited = false;
 
     public Tile[] adjacents = new Tile[4];
+
+    public bool CanMove => autoTileId != (int)TileTypes.Empty;
 
     public void UpdateAutoTileId()
     {
@@ -26,6 +30,25 @@ public class Tile
                 // 0010 2
                 // 0001 3
                 autoTileId |= 1 << adjacents.Length - 1 - i;
+            }
+        }
+    }
+
+    public void UpdateFowTileId()
+    {
+        fowTileId = 0;
+        for (int i = 0; i < adjacents.Length; i++)
+        {
+            if (adjacents[i] != null && adjacents[i].isVisited)
+            {
+                if (autoTileId == -1)
+                {
+                    // 1000 0
+                    // 0100 1
+                    // 0010 2
+                    // 0001 3
+                    fowTileId |= 1 << adjacents.Length - 1 - i;
+                }
             }
         }
     }
