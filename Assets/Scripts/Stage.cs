@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Stage : MonoBehaviour
@@ -55,8 +54,10 @@ public class Stage : MonoBehaviour
     private Map map;
     public Map Map => map;
 
-    private Camera mainCamera;
+    private Graph graph;
+    public Graph Graph => graph;
 
+    private Camera mainCamera;
 
     private void Awake()
     {
@@ -100,6 +101,39 @@ public class Stage : MonoBehaviour
 
         CreateGrid();
         CreatePlayer();
+        CreateGraph();
+    }
+
+    private int GetTileWeight(int autoTileId)
+    {
+        return (TileTypes)autoTileId switch
+        {
+            TileTypes.Empty => -1,
+            TileTypes.Grass => 1,
+            TileTypes.Tree => 2,
+            TileTypes.Hills => 4,
+            TileTypes.Mountains => -1,
+            TileTypes.Towns => 1,
+            TileTypes.Castle => 1,
+            TileTypes.Monster => 1,
+            _ => 1
+        };
+    }
+
+    private void CreateGraph()
+    {
+        var grid = new int[mapHeight, mapWidth];
+        for (int r = 0; r < mapHeight; r++)
+        {
+            for (int c = 0; c < mapWidth; c++)
+            {
+                var tile = map.tiles[r * mapWidth + c];
+                grid[r, c] = GetTileWeight(tile.autoTileId);
+            }
+        }
+
+        graph = new Graph();
+        graph.Init(grid);
     }
 
     private void CreatePlayer()
@@ -110,7 +144,7 @@ public class Stage : MonoBehaviour
         }
 
         player = Instantiate(playerPrefab);
-        player.MoveTo(map.startTile.id);
+        player.Warp(map.startTile.id);
     }
 
     private void CreateGrid()
@@ -144,73 +178,76 @@ public class Stage : MonoBehaviour
         }
     }
 
-    public void UpdateFOW(int centerTileId)
-    {
-        int centerRow = centerTileId / mapWidth;
-        int centerCol = centerTileId % mapWidth;
-
-        var newlyRevealed = new List<int>();
-
-        for (int r = centerRow - fowRadius; r <= centerRow + fowRadius; r++)
-        {
-            for (int c = centerCol - fowRadius; c <= centerCol + fowRadius; c++)
-            {
-                if (r < 0 || r >= mapHeight || c < 0 || c >= mapWidth)
-                    continue;
-
-                // 원형 반경 체크 (직사각형이 아닌 원 모양으로 밝힘)
-                int dr = r - centerRow;
-                int dc = c - centerCol;
-                if (dr * dr + dc * dc > fowRadius * fowRadius)
-                    continue;
-
-                int tileId = r * mapWidth + c;
-                if (!map.tiles[tileId].isVisited)
-                {
-                    map.tiles[tileId].isVisited = true;
-                    newlyRevealed.Add(tileId);
-                }
-            }
-        }
-
-        // 새로 밝혀진 타일 + 그 인접 타일(안개 경계 갱신)을 다시 렌더링
-        var toRedraw = new HashSet<int>(newlyRevealed);
-        foreach (int tileId in newlyRevealed)
-        {
-            foreach (var adj in map.tiles[tileId].adjacents)
-            {
-                if (adj != null)
-                    toRedraw.Add(adj.id);
-            }
-        }
-
-        foreach (int tileId in toRedraw)
-        {
-            DecorateTile(tileId);
-        }
-    }
-
     public void DecorateTile(int tileId)
     {
         var tile = map.tiles[tileId];
         var tileGo = tileObjs[tileId];
         var rend = tileGo.GetComponent<SpriteRenderer>();
 
-        if (tile.autoTileId != (int)TileTypes.Empty)
+        if (tile.isVisited)
         {
-            if (!tile.isVisited)
+            if (tile.autoTileId != (int)TileTypes.Empty)
             {
-                tile.UpdateFowTileId();
-                rend.sprite = fowSprites[tile.fowTileId];
+                rend.sprite = islandSprites[tile.autoTileId];
             }
             else
             {
-                rend.sprite = islandSprites[tile.autoTileId];
+                rend.sprite = null;
             }
         }
         else
         {
-            rend.sprite = null;
+            rend.sprite = fowSprites[tile.fowTileId];
+        }
+
+    }
+
+    public void OnTileVisited(int tileId)
+    {
+        OnTileVisited(map.tiles[tileId]);
+    }
+
+    public void OnTileVisited(Tile tile)
+    {
+        int centerX = tile.id % mapWidth;
+        int centerY = tile.id / mapWidth;
+
+        for (int i = -fowRadius; i <= fowRadius; i++)
+        {
+            for (int j = -fowRadius; j <= fowRadius; j++)
+            {
+                int x = centerX + j;
+                int y = centerY + i;
+                if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+                {
+                    continue;
+                }
+
+                int id = y * mapWidth + x;
+                map.tiles[id].isVisited = true;
+                DecorateTile(id);
+            }
+        }
+
+        var radius = fowRadius + 1;
+        for (int i = -radius; i <= radius; i++)
+        {
+            for (int j = -radius; j <= radius; j++)
+            {
+                if (i == radius || i == -radius || j == radius || j == -radius)
+                {
+                    int x = centerX + j;
+                    int y = centerY + i;
+                    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight)
+                    {
+                        continue;
+                    }
+
+                    int id = y * mapWidth + x;
+                    map.tiles[id].UpdateFowTileId();
+                    DecorateTile(id);
+                }
+            }
         }
     }
 

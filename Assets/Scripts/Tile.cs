@@ -23,7 +23,7 @@ public class Tile
         autoTileId = 0;
         for (int i = 0; i < adjacents.Length; i++)
         {
-            if (adjacents[i] != null)
+            if (adjacents[i] != null && adjacents[i].autoTileId != (int)TileTypes.Empty)
             {
                 // 1000 0
                 // 0100 1
@@ -36,19 +36,16 @@ public class Tile
 
     public void UpdateFowTileId()
     {
-        fowTileId = 0;
+        fowTileId = 15;
         for (int i = 0; i < adjacents.Length; i++)
         {
-            if (adjacents[i] != null && adjacents[i].isVisited)
+            if (adjacents[i] == null || adjacents[i].isVisited)
             {
-                if (autoTileId == -1)
-                {
-                    // 1000 0
-                    // 0100 1
-                    // 0010 2
-                    // 0001 3
-                    fowTileId |= 1 << adjacents.Length - 1 - i;
-                }
+                // 1000 0
+                // 0100 1
+                // 0010 2
+                // 0001 3
+                fowTileId |= 1 << adjacents.Length - 1 - i;
             }
         }
     }
@@ -80,7 +77,6 @@ public class Tile
                 continue;
             }
             adjacents[i].RemoveAdjacents(this);
-            adjacents[i] = null;
         }
 
         UpdateAutoTileId();
